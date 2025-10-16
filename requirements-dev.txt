@@ -1,0 +1,6 @@
+# Dev tooling: linter, type checker, and common type stubs
+ruff==0.0.291
+mypy==1.9.0
+types-requests==2.28.11
+types-PyYAML==6.0.12
+# Optional: add types for other packages if mypy flags missing stubs

@@ -1,0 +1,4 @@
+# Optional/extra dependencies (may require rust toolchain for tiktoken)
+# Install only if you have Rust toolchain or prebuilt wheels available
+
+tiktoken==0.4.0
