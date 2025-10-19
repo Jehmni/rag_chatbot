@@ -3,9 +3,12 @@
     "index_name": "example_index",
     "search_endpoint": "https://<your-search>.search.windows.net",
     "search_api_key_env": "EX_CLIENT_SEARCH_KEY",
-    "openai_endpoint": "https://<your-azure-openai>.openai.azure.com",
-    "openai_api_key_env": "EX_CLIENT_OPENAI_KEY",
-    "deployment_name": "gpt-4o-mini",
     "description": "Client-specific metadata for indexes and keys"
+  },
+  "client2": {
+    "index_name": "client2_index",
+    "search_endpoint": "https://<your-search>.search.windows.net",
+    "search_api_key_env": "CLIENT2_SEARCH_KEY",
+    "description": "Another client for multi-client RAG testing"
   }
 }

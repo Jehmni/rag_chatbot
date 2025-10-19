@@ -15,6 +15,15 @@ from app.models import ChatRequest, RAGResponse
 from app.ragg_manager import RAGError, RAGManager
 from app.utils import logger
 
+from openai import AzureOpenAI
+
+# Optional: create a global Azure OpenAI client if you want it outside RAGManager
+azure_client = AzureOpenAI(
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_version=os.getenv("AZURE_OPENAI_API_VERSION")
+)
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -34,6 +43,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
                 request_id,
             )
 
+
 app = FastAPI(title="Multi-Client RAG Chatbot", lifespan=None)
 app.add_middleware(RequestIDMiddleware)
 
@@ -49,28 +59,42 @@ async def lifespan(app: FastAPI):
     app.state.http_session = aiohttp.ClientSession()
     app.state.rag_managers = {}
 
-    # instantiate a RAGManager per configured client so we reuse sessions
+    # Load OpenAI config from environment
+    openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+
+    if not (openai_endpoint and openai_api_key and deployment_name):
+        raise RuntimeError(
+            "OpenAI environment variables not set: "
+            "AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME"
+        )
+
+    # instantiate a RAGManager per client
     for client_id, cfg in clients.items():
+        # inject OpenAI info from environment
+        cfg["openai_endpoint"] = openai_endpoint
+        cfg["openai_api_key"] = openai_api_key
+        cfg["deployment_name"] = deployment_name
+
         try:
             app.state.rag_managers[client_id] = RAGManager(cfg, session=app.state.http_session)
             logger.info("Initialized RAGManager for client=%s", client_id)
         except Exception:
             logger.exception("Failed to initialize RAGManager for client=%s", client_id)
 
-    # Optional: validate Azure connectivity at startup (toggle with env var)
+    # Optional: validate Azure connectivity at startup
     try:
         if os.getenv("AZURE_VALIDATE_ON_STARTUP", "false").lower() in ("1", "true", "yes"):
             logger.info("Running Azure connectivity validation on startup")
             results = await validate_azure_endpoints(clients, app.state.http_session)
             logger.info("Azure validation results: %s", results)
-            # In prod, treat failed checks as fatal
             if os.getenv("DEPLOYMENT_ENV", "dev").lower() == "prod":
                 failed = [k for k, ok in results.items() if not ok]
                 if failed:
                     raise RuntimeError(f"Azure validation failed for clients: {failed}")
     except Exception:
         logger.exception("Azure validation encountered an error during startup")
-        # re-raise in production to prevent broken deployments
         if os.getenv("DEPLOYMENT_ENV", "dev").lower() == "prod":
             raise
 

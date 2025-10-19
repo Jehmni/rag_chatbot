@@ -3,4 +3,6 @@ ruff==0.0.291
 mypy==1.9.0
 types-requests==2.28.11
 types-PyYAML==6.0.12
+# Test client dependency required by FastAPI/Starlette tests
+httpx==0.28.1
 # Optional: add types for other packages if mypy flags missing stubs
